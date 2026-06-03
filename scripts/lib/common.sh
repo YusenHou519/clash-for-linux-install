@@ -54,6 +54,19 @@ _get_random_val() {
     tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 32
 }
 
+# 对字符串做 URL 百分号编码（用于代理 URL 中的用户名/密码等）
+_urlencode() {
+    local str=$1 i c out=
+    for ((i = 0; i < ${#str}; i++)); do
+        c=${str:i:1}
+        case $c in
+        [a-zA-Z0-9.~_-]) out+=$c ;;
+        *) printf -v c '%%%02X' "'$c"; out+=$c ;;
+        esac
+    done
+    printf '%s' "$out"
+}
+
 _color_log() {
     local color="$1"
     local msg="$2"

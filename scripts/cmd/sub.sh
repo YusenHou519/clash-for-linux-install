@@ -175,27 +175,19 @@ _sub_use() {
 }
 
 _sub_update() {
-    local arg is_convert=false
+    local arg is_convert=false id=
     for arg in "$@"; do
         case $arg in
-        --auto)
-            command -v crontab >/dev/null || _errorcat "未检测到 crontab 命令，请先安装 cron 服务" || return
-            crontab -l 2>/dev/null | grep -Fqs "$CLASHCTL_CRON_TAG" || {
-                {
-                    crontab -l 2>/dev/null | grep -Fv "$CLASHCTL_CRON_TAG"
-                    printf '0 0 */2 * * %s sub update %s\n' "$(which clashctl)" "$CLASHCTL_CRON_TAG"
-                } | crontab -
-            }
-            _okcat "已设置定时更新订阅"
-            return 0
-            ;;
         --convert)
             is_convert=true
+            ;;
+        -*) ;;
+        *)
+            [ -z "$id" ] && id=$arg
             ;;
         esac
     done
 
-    local id=$1
     [ -z "$id" ] && id=$("$BIN_YQ" '.use // 1 | tostring' "$CLASH_PROFILES_META")
 
     local url profile_path use

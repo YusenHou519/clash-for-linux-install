@@ -62,7 +62,16 @@ set_system_proxy() {
     IFS='|' read -r mixed_port http_port socks_port auth < <(
         "$BIN_YQ" '[.mixed-port // "", .port // "", .socks-port // "", .authentication[0] // ""] | join("|")' "$CLASH_CONFIG_RUNTIME"
     )
-    [ -n "$auth" ] && auth=$auth@
+    [ -n "$auth" ] && {
+        # authentication 形如 "user:password"，用户名/密码需分别 URL 编码
+        # 否则含 @ : / 等特殊字符时会破坏代理 URL 结构
+        local auth_user=${auth%%:*} auth_pass=${auth#*:}
+        if [ "$auth_user" = "$auth" ]; then
+            auth="$(_urlencode "$auth")@"
+        else
+            auth="$(_urlencode "$auth_user"):$(_urlencode "$auth_pass")@"
+        fi
+    }
 
     local bind_addr=$(_get_bind_addr)
     local http_proxy_addr="http://${auth}${bind_addr}:${http_port:-${mixed_port}}"

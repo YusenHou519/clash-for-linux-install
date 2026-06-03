@@ -314,6 +314,12 @@ secure_install_tree() {
         _failcat '⚠️ ' "安装目录权限收紧失败，请手动执行：chmod -R go-w $CLASHCTL_HOME"
         return 1
     }
+    # resources/ 含 Web 密钥（runtime.yaml）与订阅令牌（profiles.yaml），
+    # 禁止本机其他用户读取，避免多用户主机上的信息泄露
+    chmod -R go-rwx "$CLASH_RESOURCES_DIR" 2>/dev/null || {
+        _failcat '⚠️ ' "敏感目录权限收紧失败，请手动执行：chmod -R go-rwx $CLASH_RESOURCES_DIR"
+        return 1
+    }
 }
 
 detect_rc() {

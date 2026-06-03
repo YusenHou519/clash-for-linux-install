@@ -218,31 +218,36 @@ install_service() {
     local cmd_path="${BIN_KERNEL}"
     local cmd_arg="-d ${CLASH_RESOURCES_DIR} -f ${CLASH_CONFIG_RUNTIME}"
     local cmd_full="${BIN_KERNEL} -d ${CLASH_RESOURCES_DIR} -f ${CLASH_CONFIG_RUNTIME}"
-    local service_src service_target
+    local service_src service_target service_mode
 
     case "$service_manager" in
     systemd)
         service_src="${template_dir}/systemd.sh"
         service_target="/etc/systemd/system/${CLASHCTL_KERNEL}.service"
+        # systemd unit 文件不应可执行，否则 systemd 会告警
+        service_mode=0644
         ;;
     sysvinit)
         service_src="${template_dir}/sysvinit.sh"
         service_target="/etc/init.d/${CLASHCTL_KERNEL}"
+        service_mode=0755
         ;;
     openrc)
         service_src="${template_dir}/openrc.sh"
         service_target="/etc/init.d/${CLASHCTL_KERNEL}"
+        service_mode=0755
         ;;
     runit)
         service_src="${template_dir}/runit.sh"
         service_target="/etc/sv/${CLASHCTL_KERNEL}/run"
+        service_mode=0755
         ;;
     nohup | *)
         return 0
         ;;
     esac
 
-    /usr/bin/install -D -m +x "$service_src" "$service_target"
+    /usr/bin/install -D -m "$service_mode" "$service_src" "$service_target"
     sed -i \
         -e "s#placeholder_cmd_path#$cmd_path#g" \
         -e "s#placeholder_cmd_args#$cmd_arg#g" \
