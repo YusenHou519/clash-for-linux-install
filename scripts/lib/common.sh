@@ -51,7 +51,7 @@ _get_local_ip() {
 }
 
 _get_random_val() {
-    tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 6
+    tr -dc 'a-zA-Z0-9' </dev/urandom | head -c 32
 }
 
 _color_log() {

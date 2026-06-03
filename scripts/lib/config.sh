@@ -58,8 +58,11 @@ _detect_ext_addr() {
   local ext_ip=${ext_addr%%:*}
   local ext_port=${ext_addr##*:}
 
+  # shellcheck disable=SC2034
   EXT_IP=$ext_ip
+  # shellcheck disable=SC2034
   EXT_PORT=$ext_port
+  # shellcheck disable=SC2034
   [ "$ext_ip" = '0.0.0.0' ] && EXT_IP=$(_get_local_ip)
 
   local service_active=false

@@ -8,6 +8,22 @@ CLASHCTL_SRC="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
     _errorcat "请先关闭 Tun 模式"
     exit
 }
+
+validate_uninstall_path() {
+    [ -n "$CLASHCTL_HOME" ] || _errorcat "CLASHCTL_HOME 为空，拒绝卸载" || exit 1
+    [ "$CLASHCTL_HOME" != "/" ] || _errorcat "CLASHCTL_HOME 指向根目录，拒绝卸载" || exit 1
+    [ "$CLASHCTL_HOME" != "$HOME" ] || _errorcat "CLASHCTL_HOME 指向 HOME 目录，拒绝卸载" || exit 1
+
+    [ -d "$CLASHCTL_HOME" ] || return 0
+    [ -f "$CLASHCTL_HOME/.env" ] &&
+        [ -f "$CLASHCTL_HOME/scripts/cmd/clashctl.sh" ] &&
+        [ -f "$CLASHCTL_HOME/uninstall.sh" ] || {
+        _errorcat "$CLASHCTL_HOME 不像有效的 clashctl 安装目录，拒绝删除"
+        exit 1
+    }
+}
+
+validate_uninstall_path
 uninstall_service
 
 command -v crontab >&/dev/null && {

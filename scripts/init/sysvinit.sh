@@ -1,3 +1,4 @@
+#!/bin/sh
 ### BEGIN INIT INFO
 # Provides: placeholder_kernel_name
 # Required-Start: $network $local_fs $remote_fs
@@ -14,22 +15,22 @@ cmd="placeholder_cmd_full"
 
 case "$1" in
 start)
-    $0 status >&/dev/null && exit 0
-    $cmd >&$logfile &
-    echo $! >$pidfile
+    "$0" status >/dev/null 2>&1 && exit 0
+    $cmd >"$logfile" 2>&1 &
+    echo $! >"$pidfile"
     ;;
 stop)
-    pid=$(cat $pidfile 2>/dev/null)
+    pid=$(cat "$pidfile" 2>/dev/null)
     [ -n "$pid" ] && kill -9 "$pid"
-    rm -f $pidfile
+    rm -f "$pidfile"
     ;;
 restart | reload)
-    $0 stop
+    "$0" stop
     sleep 0.5
-    $0 start
+    "$0" start
     ;;
 status)
-    pid=$(cat $pidfile 2>/dev/null)
+    pid=$(cat "$pidfile" 2>/dev/null)
     isStart=$(ps ax | awk '{ print $1 }' | grep -e "^${pid}$")
     [ -n "$isStart" ] && {
         echo "placeholder_kernel_name is running with PID: $pid"

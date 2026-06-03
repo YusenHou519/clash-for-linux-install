@@ -68,7 +68,8 @@ service_sudo_start() {
     _is_root && service_start && return 0
     detect_service_manager
     (
-        sudo sh -c "nohup '$BIN_KERNEL' -d '$CLASH_RESOURCES_DIR' -f '$CLASH_CONFIG_RUNTIME' </dev/null > '$service_log_path' 2>&1 &"
+        sudo sh -c 'nohup "$1" -d "$2" -f "$3" </dev/null >"$4" 2>&1 &' sh \
+            "$BIN_KERNEL" "$CLASH_RESOURCES_DIR" "$CLASH_CONFIG_RUNTIME" "$service_log_path"
         stty opost 2>/dev/null
     )
 }

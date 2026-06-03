@@ -49,6 +49,7 @@ parse_args() {
             CLASHCTL_KERNEL=clash
             ;;
         http*)
+            # shellcheck disable=SC2034
             CLASHCTL_SUB_URL=$arg
             ;;
         esac
@@ -189,16 +190,39 @@ download_zip() {
             --progress-bar \
             --show-error \
             --fail \
-            --insecure \
             --location \
             --max-time "$CLASHCTL_DOWNLOAD_TIMEOUT" \
             --retry 1 \
             --output "$target" \
             "$url"
+        verify_download_checksum "$item" "$target"
         target_zips+=("$target")
     done
     valid_zip "${target_zips[@]}"
     load_zip >&/dev/null
+}
+
+verify_download_checksum() {
+    local item=$1 target=$2 expected=
+    case "$item" in
+    clash) expected=$SHA256_CLASH ;;
+    mihomo) expected=$SHA256_MIHOMO ;;
+    yq) expected=$SHA256_YQ ;;
+    subconverter) expected=$SHA256_SUBCONVERTER ;;
+    esac
+
+    [ -z "$expected" ] && return 0
+    command -v sha256sum >&/dev/null || _errorcat "缺少 sha256sum，无法校验 $item" || exit 1
+
+    local actual
+    actual=$(sha256sum "$target" | awk '{print $1}')
+    [ "$actual" = "$expected" ] || {
+        _errorcat "SHA256 校验失败：$target"
+        _failcat "期望：$expected"
+        _failcat "实际：$actual"
+        exit 1
+    }
+    _okcat '🔐' "SHA256 校验通过：$item"
 }
 valid_zip() {
     (($#)) || return 1
@@ -209,14 +233,50 @@ valid_zip() {
 
     [ ${#fail_zips[@]} -eq 0 ] || _errorcat "文件验证失败：${fail_zips[*]} 请删除后重试，或自行下载对应版本至 ${ZIP_BASE_DIR} 目录" || exit
 }
+
+valid_archive_paths() {
+    local archive=$1 format=$2 entry
+    case "$format" in
+    tar)
+        tar -tf "$archive" >/dev/null || _errorcat "无法读取压缩包：$archive" || exit 1
+        while IFS= read -r entry; do
+            valid_archive_entry "$archive" "$entry"
+        done < <(tar -tf "$archive")
+        ;;
+    zip)
+        unzip -Z1 "$archive" >/dev/null || _errorcat "无法读取压缩包：$archive" || exit 1
+        while IFS= read -r entry; do
+            valid_archive_entry "$archive" "$entry"
+        done < <(unzip -Z1 "$archive")
+        ;;
+    esac
+}
+
+valid_archive_entry() {
+    local archive=$1 entry=$2
+    case "$entry" in
+    "" | /* | ../* | */../* | */.. | .. | [A-Za-z]:* | *\\*)
+        _errorcat "压缩包包含不安全路径：$archive -> $entry"
+        exit 1
+        ;;
+    esac
+}
 unzip_zip() {
     valid_zip "$ZIP_KERNEL" "$ZIP_YQ" "$ZIP_SUBCONVERTER" "$ZIP_UI"
+    valid_archive_paths "$ZIP_YQ" tar
+    valid_archive_paths "$ZIP_SUBCONVERTER" tar
     /usr/bin/install -D <(gzip -dc "$ZIP_KERNEL") "$BIN_KERNEL"
     tar -xf "$ZIP_YQ" -C "${BIN_BASE_DIR}"
     /bin/mv -f "${BIN_BASE_DIR}"/yq_* "${BIN_BASE_DIR}/yq"
     tar -xf "$ZIP_SUBCONVERTER" -C "$BIN_BASE_DIR"
     /bin/cp "$BIN_SUBCONVERTER_DIR/pref.example.yml" "$BIN_SUBCONVERTER_CONFIG"
-    unzip -oqq "$ZIP_UI" -d "$CLASH_RESOURCES_DIR" 2>/dev/null || tar -xf "$ZIP_UI" -C "$CLASH_RESOURCES_DIR"
+    if unzip -tqq "$ZIP_UI" >/dev/null 2>&1; then
+        valid_archive_paths "$ZIP_UI" zip
+        unzip -oqq "$ZIP_UI" -d "$CLASH_RESOURCES_DIR"
+    else
+        valid_archive_paths "$ZIP_UI" tar
+        tar -xf "$ZIP_UI" -C "$CLASH_RESOURCES_DIR"
+    fi
 }
 
 _set_envs() {
@@ -246,6 +306,14 @@ install_clashctl() {
         /bin/cp -r "$resource" "$target_dir/resources/"
     done
     apply_rc
+    secure_install_tree
+}
+
+secure_install_tree() {
+    chmod -R go-w "$CLASHCTL_HOME" 2>/dev/null || {
+        _failcat '⚠️ ' "安装目录权限收紧失败，请手动执行：chmod -R go-w $CLASHCTL_HOME"
+        return 1
+    }
 }
 
 detect_rc() {
@@ -304,7 +372,10 @@ revoke_rc() {
     local rc
     for rc in "$SHELL_RC_BASH" "$SHELL_RC_ZSH"; do
         [ ! -f "$rc" ] && continue
-        sed -i.bak --follow-symlinks '/CLASHCTL_HOME/d' "$rc" 2>/dev/null
+        sed -i.bak --follow-symlinks \
+            -e '/^export CLASHCTL_HOME=/d' \
+            -e '/^\. \$CLASHCTL_HOME\/scripts\/cmd\/clashctl\.sh$/d' \
+            "$rc" 2>/dev/null
     done
 
     [ -n "$SHELL_RC_FISH" ] && rm -f -- "$SHELL_RC_FISH" 2>/dev/null

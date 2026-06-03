@@ -21,7 +21,6 @@ _download_raw_config() {
         --silent \
         --show-error \
         --fail \
-        --insecure \
         --location \
         --max-time "$CLASHCTL_SUB_TIMEOUT" \
         --retry 1 \
@@ -30,7 +29,6 @@ _download_raw_config() {
         "$url" ||
         wget \
             --no-verbose \
-            --no-check-certificate \
             --timeout "$CLASHCTL_SUB_TIMEOUT" \
             --tries 1 \
             --user-agent "$CLASHCTL_SUB_UA" \

@@ -1,4 +1,5 @@
 #!/sbin/openrc-run
+# shellcheck shell=sh disable=SC2034
 
 description="placeholder_kernel_desc"
 command="placeholder_cmd_path"
